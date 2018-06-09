@@ -1,0 +1,179 @@
+---
+title: "Code"
+author: "Alekhya Akkunuri"
+date: "November 25, 2017"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+##Exploratory Data Analysis
+
+```{r}
+
+library("tidyverse")
+library(ROCR)
+library("e1071")
+library("caret")
+
+# reading in the dataset
+depression_data<-read_csv("depression.csv")
+
+# creating factors for categorical variables
+depression_data$Gender<-as.factor(depression_data$Gender)
+depression_data$Hospt<-as.factor(depression_data$Hospt)
+depression_data$Outcome<-as.factor(depression_data$Outcome)
+depression_data$Treat<-as.factor(depression_data$Treat)
+
+
+# table for outcome vs treatment
+table(depression_data$Treat, depression_data$Outcome)
+
+# bar plot of count vs treatment, differentiated by outcome
+ggplot(depression_data, aes(depression_data$Treat, fill = depression_data$Outcome)) + geom_bar()
+
+
+# bar plot of count vs outcome, differentiated by Gender
+ggplot(depression_data, aes(depression_data$Outcome, fill = depression_data$Gender)) + geom_bar()
+
+
+# bar plot of count vs treatment, differentiated by Gender
+ggplot(depression_data, aes(depression_data$Treat, fill = depression_data$Gender)) + geom_bar()
+
+
+# bar plot of count vs hospital, differentiated by outcome
+ggplot(depression_data, aes(depression_data$Hospt, fill = depression_data$Outcome)) + geom_bar()
+
+
+# bar plot of count vs hospital, differentiated by treatment
+ggplot(depression_data, aes(depression_data$Hospt, fill = depression_data$Treat)) + geom_bar()
+
+
+# plot of time vs treatment, differentiated by outcome
+ggplot(depression_data) + geom_point(mapping = aes(x=depression_data$Time, y=depression_data$Treat , color = depression_data$Outcome))
+
+
+
+# plot of time vs treatment, differentiated by outcome
+ggplot(depression_data) + geom_point(mapping = aes(x=depression_data$Age, y=depression_data$Treat , color = depression_data$Outcome))
+
+
+# plot of time vs Age, differentiated by outcome
+ggplot(depression_data) + geom_point(mapping = aes(x = depression_data$Age, y = depression_data$Time, color = depression_data$Outcome))
+
+# plot of time vs Age, differentiated by hospital
+ggplot(depression_data) + geom_point(mapping = aes(x = depression_data$Age, y = depression_data$Time, color = depression_data$Hospt))
+
+
+# plot of time vs Age, differentiated by treatment
+ggplot(depression_data) + geom_point(mapping = aes(x = depression_data$Age, y = depression_data$Time, color = depression_data$Treat))
+
+# plot of time depressed before treatment vs treatment, differentiated by outcome
+ggplot(depression_data) + geom_point(mapping = aes(x=depression_data$AcuteT, y=depression_data$Treat , color = depression_data$Outcome))
+
+
+# plot of time depressed beofre treatment vs Age, differentiated by outcome
+ggplot(depression_data) + geom_point(mapping = aes(x = depression_data$Age, y = depression_data$AcuteT, color = depression_data$Outcome))
+
+
+# plot of time depressed before treatment vs Age, differentiated by hospital
+ggplot(depression_data) + geom_point(mapping = aes(x = depression_data$Age, y = depression_data$AcuteT, color = depression_data$Hospt))
+
+
+# plot of time depressed before treatment vs Age, differentiated by treatment
+ggplot(depression_data) + geom_point(mapping = aes(x = depression_data$Age, y = depression_data$AcuteT, color = depression_data$Treat))
+
+```
+
+
+##Modeling the dataset
+
+
+```{r}
+# shuffling the dataset
+shuff<-runif(nrow(depression_data))
+depression<-depression_data[order(shuff),]
+
+set_train <- 1:70
+set_test <- 71:109
+
+# creating testing and training datasets
+train <- depression[set_train,]
+test <- depression[set_test,]
+
+
+# ----------------------------- Modeling and testing accuracy of model for outcome ----------------------------
+# logistic regression model for outcome
+model_outcome <- glm(Outcome ~ .,family=binomial(link= 'logit'),data=train)
+summary(model_outcome)
+
+# performance of model
+p <- predict(model_outcome, newdata=subset(test,select=c(1,2,3,4,5,6,7)), type="response")
+pr <- prediction(p, test$Outcome)
+prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+plot(prf)
+
+auc <- performance(pr, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+
+
+# ----------------------------- Modeling and testing accuracy of model for outcome ----------------------------
+# logistic regression model for outcome
+model_gender <- glm(Gender ~ .,family=binomial(link= 'logit'),data=train)
+summary(model_gender)
+
+# performance of model
+p <- predict(model_gender, newdata=subset(test,select=c(1,2,3,4,5,6,7)), type="response")
+pr <- prediction(p, test$Gender)
+prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+plot(prf)
+
+auc <- performance(pr, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+
+
+
+
+# ----------------------------- Modeling and testing accuracy of model for outcome on treatment and time ----------------------------
+# logistic regression model for outcome on treatment and time
+model_outcome2 <- glm(Outcome ~  Treat + Time ,family = binomial, data=train)
+summary(model_outcome2)
+
+# performance of model
+p <- predict(model_outcome2, newdata=subset(test,select=c(1,2,3,4,5,6,7)), type="response")
+pr <- prediction(p, test$Outcome)
+prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+plot(prf)
+
+auc <- performance(pr, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+
+#-------------------------SVM on Outcome---------------------------
+
+
+model_svm_outcome<-svm(Outcome ~ ., train)
+pred <- predict(model_svm_outcome, test)
+table(pred, test$Outcome)
+confusionMatrix(pred, test$Outcome)
+
+
+model_svm_outcome2<-svm(Outcome ~ Treat + Time, train)
+pred <- predict(model_svm_outcome2, test)
+table(pred, test$Outcome)
+confusionMatrix(pred, test$Outcome)
+
+```
+
+
+
+
+
